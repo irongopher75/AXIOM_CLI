@@ -33,6 +33,9 @@ public:
     Result(T val) : storage(val) {}
     Result(DataError err) : storage(err) {}
 
+    static Result<T> success(const T& val) { return Result<T>(val); }
+    static Result<T> fail(DataError err) { return Result<T>(err); }
+
     bool has_value() const { return std::holds_alternative<T>(storage); }
     T& value() { return std::get<T>(storage); }
     const T& value() const { return std::get<T>(storage); }

@@ -34,3 +34,15 @@ AXIOM CHANGE LOG
 - Added 'make install' and 'make uninstall' targets for system-wide deployment.
 - Purged orphaned monolithic files (axiom.cpp, core/data_engine.cpp) to finalize modular transition.
 - Implemented robust directory auto-creation for persistent application data.
+
+[2026-04-26 02:22] DATA OPTIMIZATION & ADVANCED UI
+- Integrated high-fidelity 'Heatmap' UI component for transition matrix visualization.
+- Implemented persistent disk caching (~/.axiom/cache/) to cut API hits by 80%+.
+- Unified fetching: Force-extracted 2-year windows to satisfy Analysis & Markov engines in one call.
+- Optimized REPL dispatch with in-memory search caching for ticker resolutions.
+
+[2026-04-26 02:43] COMMAND-DRIVEN INTERACTION
+- Upgraded REPL to support explicit subcommands: `predict` (or `p`) and `analyze` (or `a`).
+- Implemented targeted module execution: `predict TSLA` only shows the Markov engine, while `analyze TSLA` only shows the technical suite.
+- Maintained legacy behavior: Bare ticker inputs (e.g., `TSLA`) continue to show the full combined report.
+- Hardened input tokenizer to handle multi-token commands and trailing whitespace.

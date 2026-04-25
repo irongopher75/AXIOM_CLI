@@ -2,15 +2,24 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include "types.hpp"
 
 namespace Axiom {
 
 // ---------------------------------------------------------------------------
+// A single market bar (candlestick).
+// ---------------------------------------------------------------------------
+struct Bar {
+    Price   o, h, l, c;
+    int64_t v; // Volume
+};
+
+// ---------------------------------------------------------------------------
 // Raw data from the data engine. No UI concern touches this struct.
 // ---------------------------------------------------------------------------
 struct PriceData {
-    std::vector<Price> prices;
+    std::vector<Bar>   bars;
     std::string        source;
 };
 
@@ -24,7 +33,20 @@ struct AnalysisResult {
     double             change    { 0.0 };
     Price              sma50     { 0.0 };
     double             rsi       { 50.0 };
-    std::vector<Price> history;   // raw, for chart rendering at display time
+    
+    // --- Core Advanced Indicators ---
+    Price              atr14     { 0.0 };
+    Price              bb_upper  { 0.0 };
+    Price              bb_lower  { 0.0 };
+    Price              vwap      { 0.0 };
+    double             mfi       { 50.0 };
+    double             adx       { 0.0 };
+    double             hurst     { 0.5 };
+    
+    // --- All 50+ Indicators ---
+    std::map<std::string, double> stats;
+
+    std::vector<Bar>   history;   // raw, for chart rendering at display time
     std::string        sentiment;
     std::string        source;
     std::string        timestamp;
@@ -40,6 +62,7 @@ struct MarkovResult {
     double      confidence  { 0.0 };
     double      aic         { 0.0 };
     bool        aic_valid   { false };
+    std::vector<std::vector<double>> transition_matrix; // for heatmap UI
     std::string source;
     std::string timestamp;
     bool        ok          { true };

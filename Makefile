@@ -21,11 +21,13 @@ INSTALL_DIR := $(PREFIX)/bin
 # ---------------------------------------------------------------------------
 ENGINE_SRCS := $(SRC)/engine/data_engine.cpp \
                $(SRC)/engine/analysis_engine.cpp
+UI_SRCS     := $(SRC)/ui/heatmap.cpp
 
 REPL_SRC    := $(SRC)/axiom_repl.cpp
 C_SRC       := $(SRC)/linenoise.c
 
 ENGINE_OBJS := $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(ENGINE_SRCS))
+UI_OBJS     := $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(UI_SRCS))
 REPL_OBJ    := $(OBJ)/axiom_repl.o
 C_OBJ       := $(OBJ)/linenoise.o
 
@@ -37,7 +39,7 @@ C_OBJ       := $(OBJ)/linenoise.o
 all: $(BIN)
 
 # Final binary
-$(BIN): $(ENGINE_OBJS) $(REPL_OBJ) $(C_OBJ)
+$(BIN): $(ENGINE_OBJS) $(UI_OBJS) $(REPL_OBJ) $(C_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 	@echo "  ✓  $@ binary ready"
 
