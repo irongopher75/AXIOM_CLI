@@ -1,0 +1,17 @@
+# Binaries
+axiom
+build/
+*.o
+test_price
+build/test_*
+
+# Persistent Data (Local Fallbacks)
+.poly_vault
+.finn_vault
+axiom_history.txt
+.axiom/
+
+# IDE & System
+.DS_Store
+.vscode/
+.idea/

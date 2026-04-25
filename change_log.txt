@@ -1,0 +1,36 @@
+AXIOM CHANGE LOG
+================
+
+[2026-04-26 01:52] FOUNDATION HARDENING
+- Switched price arithmetic from 'double' to fixed-point 'Price' (int64_t, 4-decimal scale).
+- Implemented persistent 'TokenBucket' rate limiter (disk-backed via .poly_vault/.finn_vault).
+- Integrated 'Result<T, Error>' pattern for explicit error propagation.
+
+[2026-04-26 01:53] MATHEMATICAL OPTIMIZATION
+- Implemented 'CircularBuffer' for O(1) indicator (SMA/RSI) updates.
+- Added AIC (Akaike Information Criterion) regime validation to Markov Chain engine.
+- Refactored 'AnalysisResult' to use hardened types.
+
+[2026-04-26 01:55] MODULARIZATION & TESTING
+- Splitting monolith into static library components (data_engine, math_engine).
+- Initialized 'tests/' directory with verification suite for Price arithmetic.
+- Verified price correctness via unit testing (test_price).
+- Updated Build System to support multi-TU compilation.
+
+[2026-04-26 02:05] INSTITUTIONAL ARCHITECTURE (Claude Refactor)
+- Completed migration to Modular Separation of Concerns (Core/Engine/UI).
+- Refactored 'AnalysisResult' to store raw history, decoupling logic from rendering.
+- Hardened Markov AIC logic comparing against a random-walk null hypothesis.
+- Cleaned up namespace isolation (Axiom::DataEngine, Axiom::AnalysisEngine, Axiom::UI).
+- Final binary 'axiom' is now a thin wrapper over the institutional core library.
+
+[2026-04-26 02:07] TEST SUITE HARDENING
+- Patched RSI edge-case for flat markets (resetting to 50.0).
+- Synchronized unit tests with hardened mathematical engine.
+- All tests (Price, SMA, RSI, Sentiment, CircularBuffer) verified as PASS.
+
+[2026-04-26 02:13] PATH HARDENING & INSTALLATION WORKFLOW
+- Centralized persistence: History and API vaults moved to ~/.axiom/ via new 'Paths' utility.
+- Added 'make install' and 'make uninstall' targets for system-wide deployment.
+- Purged orphaned monolithic files (axiom.cpp, core/data_engine.cpp) to finalize modular transition.
+- Implemented robust directory auto-creation for persistent application data.
