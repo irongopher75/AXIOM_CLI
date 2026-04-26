@@ -1,26 +1,21 @@
-# Axiom CLI — Institutional Intelligence Terminal
+# AXIOM CLI — Institutional Intelligence Terminal
 
-A high-performance C++20 terminal for quantitative market analysis, regime forecasting, and technical profiling.
+A high-performance, professional-grade C++20 command-line tool for quantitative market analysis, regime forecasting, and technical profiling.
 
 ![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=c%2B%2B)
-![License](https://img.shields.io/badge/License-MIT-emerald?style=flat-square)
-![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey?style=flat-square)
+![Architecture](https://img.shields.io/badge/Architecture-Service--Layer-emerald?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)
 
 ---
 
-## 🏛️ Institutional UI
-Axiom transforms your standard shell into a professional financial workstation using 24-bit TrueColor (ANSI) and structured layout engines.
+## 🏛️ What is Axiom?
+Axiom is a data processing and analysis CLI designed for quantitative analysts and terminal power users. It transforms raw market data into institutional-grade insights using advanced statistical models and a high-density UI.
 
-- **Panel-Driven Layout**: High-density data cards with precise padding and alignment.
-*   **Regime Pills**: Instant visual status for Bullish/Bearish regimes, RSI conditions, and trend persistence.
-*   **TrueColor Heatmaps**: Statistical transition matrices rendered with perceptually uniform color palettes (Viridis, Plasma).
-*   **Categorized Technical Profile**: 50+ indicators grouped by Trend, Momentum, and Volatility.
-
-## 🧠 Core Analysis Engine
-- **Markov MLE Forecasting**: Maximum Likelihood Estimation engine that models market state transitions and predicts future regimes with statistical confidence intervals.
-- **Advanced Indicator Suite**: Implements high-order primitives including DEMA, KAMA, Hurst Exponents, Linear Regression (Slope/R2), and Volume-Weighted Average Price (VWAP).
-- **Intelligent Ticker Resolution**: Hybrid search engine combining exact ticker matching with fuzzy name-based resolution (Exact > Prefix > Fuzzy).
-- **Tiered Data Pipeline**: Multi-word query support with daily-auto-refresh disk caching for zero-latency retrieval.
+### Key Features
+- **Markov MLE Forecasting**: Predict market regime transitions (Bullish/Bearish/Neutral) with statistical confidence.
+- **50+ Technical Indicators**: From standard SMA/RSI to high-order primitives like Hurst Exponents and DEMA.
+- **Service-Oriented Architecture**: Decoupled engine, data, and UI layers for maximum scalability.
+- **TrueColor Terminal UI**: High-density data cards and transition matrix heatmaps rendered in 24-bit color.
 
 ---
 
@@ -28,51 +23,65 @@ Axiom transforms your standard shell into a professional financial workstation u
 
 ### Prerequisites
 - `libcurl`
-- `nlohmann/json` (included)
-- C++20 compliant compiler (clang++ or g++)
+- C++20 compliant compiler (`clang++` or `g++`)
 
 ### Build from Source
 ```bash
+# Clone and build
 make clean && make
+
+# Install globally
 sudo make install
 ```
 
 ---
 
-## ⌨️ Command Reference
+## ⌨️ Usage
 
-Start the terminal with:
-```bash
-axiom
-```
+Axiom follows a modern CLI command structure:
+`axiom [command] [symbol] [flags]`
 
+### Core Commands
 | Command | Action | Example |
 | :--- | :--- | :--- |
-| `predict <symbol>` | Run Markov Chain regime forecasting | `p AAPL` |
-| `analyze <symbol>` | Run full technical indicator suite | `a TSLA` |
-| `<symbol>` | Execute combined intelligence report | `NVDA` |
-| `clear` | Wipe terminal screen | `clear` |
-| `help` | Show command reference | `help` |
-| `exit` | Terminate session | `quit` |
+| `analyze` | Run full technical indicator suite | `axiom analyze NVDA` |
+| `predict` | Execute Markov regime forecasting | `axiom predict AAPL` |
+| `fetch`   | Pre-fetch and cache data locally | `axiom fetch TSLA` |
+| `repl`    | Enter interactive terminal mode | `axiom repl` |
+| `config`  | Manage API keys and settings | `axiom config` |
+
+### Example Output
+```bash
+$ axiom analyze AAPL
+✔ Found 252 records
+✔ Trend: Bullish
+✔ Top Indicator: RSI (62.4)
+```
+
+---
+
+## 🏗️ Architecture
+Axiom is built with a scalable, industry-standard directory structure:
+- `cmd/`: CLI entry points and command dispatching.
+- `internal/`: Private logic (Engine, Service Layer, UI Rendering).
+- `pkg/`: Reusable packages (JSON parser, math utilities).
+- `configs/`: Configuration management logic.
 
 ---
 
 ## ⚙️ Configuration
-Axiom requires a **Polygon.io** API key to fetch real-time and historical bars. 
-
-You can set your key globally by exporting it in your `.zshrc` or `.bashrc`:
+Axiom requires a **Polygon.io** API key. Set it via environment variable:
 ```bash
 export POLYGON_API_KEY="your_api_key_here"
 ```
-*Note: If no environment variable is found, Axiom will attempt to use the built-in fallback key.*
 
 ---
 
-## 📁 Project Structure
-- `src/cpp/engine/`: Core analytics (Indicators, Markov MLE, Data Pipeline).
-- `src/cpp/ui/`: Institutional UI layer (Panels, Heatmaps, TrueColor helpers).
-- `src/cpp/core/`: Internal domain types and state management.
-- `~/.axiom/cache/`: Persistent local data storage.
+## 🗺️ Roadmap
+- [ ] Multi-asset support (Crypto, Forex).
+- [ ] Export to CSV/JSON format.
+- [ ] Real-time websocket streaming.
+- [ ] Custom plugin system for indicators.
 
 ---
-*Built for quantitative analysts and terminal power users.*
+*Built for the next generation of quantitative finance.*

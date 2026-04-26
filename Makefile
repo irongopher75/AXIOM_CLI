@@ -1,92 +1,62 @@
 # =============================================================================
-# Axiom — Multi-TU Build System
-# Compilers: clang++ (C++20) + clang (C, for linenoise)
+# Axiom — Professional Build System
 # =============================================================================
 
 CXX         := clang++
 CC          := clang
-CXXFLAGS    := -std=c++20 -O2 -Wall -Wextra -Wpedantic -Isrc/cpp
+CXXFLAGS    := -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinternal -Ipkg -Iconfigs
 CFLAGS      := -O2 -Wall
 LDFLAGS     := -lcurl
 
 # Paths
-SRC         := src/cpp
 OBJ         := build/obj
 BIN         := axiom
 PREFIX      := /usr/local
 INSTALL_DIR := $(PREFIX)/bin
 
-# ---------------------------------------------------------------------------
 # Sources
-# ---------------------------------------------------------------------------
-ENGINE_SRCS := $(SRC)/engine/data_engine.cpp \
-               $(SRC)/engine/analysis_engine.cpp
-UI_SRCS     := $(SRC)/ui/heatmap.cpp
+ENGINE_SRCS  := internal/engine/data_engine.cpp \
+                internal/engine/analysis_engine.cpp
+SERVICE_SRCS := internal/service/analysis_service.cpp \
+                internal/service/config_service.cpp \
+                internal/service/repl_service.cpp
+UI_SRCS      := internal/ui/heatmap.cpp
+MAIN_SRC     := cmd/axiom/main.cpp
+C_SRC        := internal/linenoise.c
 
-REPL_SRC    := $(SRC)/axiom_repl.cpp
-C_SRC       := $(SRC)/linenoise.c
+# Objects
+ENGINE_OBJS  := $(patsubst internal/%.cpp, $(OBJ)/%.o, $(ENGINE_SRCS))
+SERVICE_OBJS := $(patsubst internal/%.cpp, $(OBJ)/%.o, $(SERVICE_SRCS))
+UI_OBJS      := $(patsubst internal/%.cpp, $(OBJ)/%.o, $(UI_SRCS))
+MAIN_OBJ     := $(OBJ)/cmd/axiom/main.o
+C_OBJ        := $(OBJ)/linenoise.o
 
-ENGINE_OBJS := $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(ENGINE_SRCS))
-UI_OBJS     := $(patsubst $(SRC)/%.cpp, $(OBJ)/%.o, $(UI_SRCS))
-REPL_OBJ    := $(OBJ)/axiom_repl.o
-C_OBJ       := $(OBJ)/linenoise.o
-
-# ---------------------------------------------------------------------------
-# Targets
-# ---------------------------------------------------------------------------
-.PHONY: all clean test install uninstall
+.PHONY: all clean install uninstall
 
 all: $(BIN)
 
-# Final binary
-$(BIN): $(ENGINE_OBJS) $(UI_OBJS) $(REPL_OBJ) $(C_OBJ)
+$(BIN): $(ENGINE_OBJS) $(SERVICE_OBJS) $(UI_OBJS) $(MAIN_OBJ) $(C_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 	@echo "  ✓  $@ binary ready"
 
-# ---------------------------------------------------------------------------
 # Compile rules
-# ---------------------------------------------------------------------------
-$(OBJ)/%.o: $(SRC)/%.cpp
+$(OBJ)/%.o: internal/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ)/%.o: $(SRC)/%.c
+$(OBJ)/cmd/%.o: cmd/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJ)/%.o: internal/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# ---------------------------------------------------------------------------
-# Installation
-# ---------------------------------------------------------------------------
 install: $(BIN)
-	@echo "  ➔  Installing to $(INSTALL_DIR)..."
 	@mkdir -p $(INSTALL_DIR)
 	@cp $(BIN) $(INSTALL_DIR)/$(BIN)
 	@chmod +x $(INSTALL_DIR)/$(BIN)
-	@echo "  ✓  Done. You can now run '$(BIN)' from anywhere."
-
-uninstall:
-	@echo "  ➔  Removing from $(INSTALL_DIR)..."
-	@rm -f $(INSTALL_DIR)/$(BIN)
-	@echo "  ✓  Done."
-
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-test: build/test_price build/test_analysis
-	@echo "\n--- test_price ---"
-	./build/test_price
-	@echo "\n--- test_analysis ---"
-	./build/test_analysis
-
-build/test_price: $(SRC)/tests/test_price.cpp | build
-	$(CXX) $(CXXFLAGS) $< -o $@
-
-build/test_analysis: $(SRC)/tests/test_analysis.cpp \
-                     $(ENGINE_OBJS) $(C_OBJ) | build
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
-
-build:
-	mkdir -p $@
+	@echo "  ✓  Installed to $(INSTALL_DIR)"
 
 clean:
 	rm -rf build $(BIN)

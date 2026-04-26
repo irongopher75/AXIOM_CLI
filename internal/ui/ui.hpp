@@ -7,8 +7,8 @@
 #include <iomanip>
 #include <sstream>
 #include <regex>
-#include "../core/types.hpp"
-#include "../core/domain.hpp"
+#include "core/types.hpp"
+#include "core/domain.hpp"
 
 namespace Axiom::UI {
 
@@ -53,6 +53,20 @@ inline std::string strip_ansi(const std::string& s) {
     return std::regex_replace(s, std::regex("\033\\[[0-9;]*[a-zA-Z]"), "");
 }
 
+inline int column_width(const std::string& s) {
+    std::string stripped = strip_ansi(s);
+    int width = 0;
+    for (size_t i = 0; i < stripped.length(); ) {
+        unsigned char c = static_cast<unsigned char>(stripped[i]);
+        if (c <= 127) { width += 1; i += 1; }
+        else if ((c & 0xE0) == 0xC0) { width += 1; i += 2; }
+        else if ((c & 0xF0) == 0xE0) { width += 1; i += 3; }
+        else if ((c & 0xF8) == 0xF0) { width += 1; i += 4; }
+        else { i += 1; } // Fallback
+    }
+    return width;
+}
+
 inline std::string format_large(double val) {
     if (std::abs(val) >= 1e9) return (std::ostringstream() << std::fixed << std::setprecision(2) << val / 1e9 << "B").str();
     if (std::abs(val) >= 1e6) return (std::ostringstream() << std::fixed << std::setprecision(2) << val / 1e6 << "M").str();
@@ -93,30 +107,36 @@ inline std::string pill(const std::string& text, RGB color) {
 inline void print_panel(const std::string& content,
                          const std::string& ticker,
                          const std::string& exchange = "NYSE") {
-    const int WIDTH = 84;
+    const int W = 80; // Internal Column Width
+    const int TOTAL = W + 2;
     
-    // Header Row
-    std::cout << fg(EMERALD) << "┏━ " << BOLD << ticker << RESET << fg(EMERALD) << " " << repeat("━", WIDTH - ticker.length() - 3) << "┓" << RESET << "\n";
-    std::cout << fg(EMERALD) << "┃ " << RESET << DIM << std::left << std::setw(10) << exchange << RESET << "  " << pill("LIVE", EMERALD);
-    int head_used = 10 + 2 + 6; // exchange + padding + pill
-    std::cout << std::string(WIDTH - head_used - 2, ' ') << fg(EMERALD) << "┃" << RESET << "\n";
-    std::cout << fg(EMERALD) << "┣" << repeat("━", WIDTH) << "┫" << RESET << "\n";
+    // Top: ┏━ TSLA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+    std::string head_prefix = "┏━ " + ticker + " ";
+    int head_w = column_width(head_prefix);
+    std::cout << fg(EMERALD) << head_prefix << repeat("━", TOTAL - head_w - 1) << "┓" << RESET << "\n";
+    
+    // Sub-header: ┃ NYSE  [LIVE]                                                   ┃
+    std::string sub = "┃ " + DIM + exchange + RESET + "  " + pill("LIVE", EMERALD);
+    int sub_w = column_width(sub);
+    std::cout << fg(EMERALD) << sub << RESET << std::string(TOTAL - sub_w - 1, ' ') << fg(EMERALD) << "┃" << RESET << "\n";
+    
+    // Separator: ┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+    std::cout << fg(EMERALD) << "┣" << repeat("━", W) << "┫" << RESET << "\n";
     
     // Content
     std::stringstream ss(content);
     std::string line;
     while (std::getline(ss, line)) {
         if (line.empty()) {
-            std::cout << fg(EMERALD) << "┃ " << RESET << std::string(WIDTH - 2, ' ') << fg(EMERALD) << "┃" << RESET << "\n";
+            std::cout << fg(EMERALD) << "┃" << std::string(W, ' ') << "┃" << RESET << "\n";
             continue;
         }
-        std::string stripped = strip_ansi(line);
-        int visible_len = static_cast<int>(stripped.length());
-        int padding = std::max(0, WIDTH - visible_len - 2);
-        std::cout << fg(EMERALD) << "┃ " << RESET << line << std::string(padding, ' ') << fg(EMERALD) << "┃" << RESET << "\n";
+        int line_w = column_width(line);
+        std::cout << fg(EMERALD) << "┃ " << RESET << line << std::string(std::max(0, TOTAL - line_w - 3), ' ') << fg(EMERALD) << " ┃" << RESET << "\n";
     }
     
-    std::cout << fg(EMERALD) << "┗" << repeat("━", WIDTH) << "┛" << RESET << "\n";
+    // Bottom: ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+    std::cout << fg(EMERALD) << "┗" << repeat("━", W) << "┛" << RESET << "\n";
 }
 
 inline void print_splash() {
@@ -127,7 +147,7 @@ inline void print_splash() {
  / ___ | /   |_/ // /_/ / /  / /  
 /_/  |_|/_/|_/___/\____/_/  /_/   
                                    )" << RESET << "\n"
-              << fg(MUTED) << "  Institutional Terminal v0.2.1" << RESET << "\n"
+              << fg(MUTED) << "  Institutional Terminal v0.4.0-alpha" << RESET << "\n"
               << "  Type 'predict <ticker>' or just a ticker (e.g. 'AAPL') to start.\n\n";
 }
 

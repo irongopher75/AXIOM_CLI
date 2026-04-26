@@ -8,7 +8,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-#include "../core/buffers.hpp"
+#include "core/buffers.hpp"
 
 static std::string now_str() {
     auto t  = std::time(nullptr);
@@ -32,8 +32,10 @@ AnalysisResult run_analysis(const std::string& symbol) {
     }
 
     auto& data = fetched.value();
-    res.source  = data.source;
-    res.history = data.bars;
+    res.source   = data.source;
+    res.exchange = data.exchange;
+    res.country  = data.country;
+    res.history  = data.bars;
 
     if (data.bars.empty()) {
         res.ok = false;

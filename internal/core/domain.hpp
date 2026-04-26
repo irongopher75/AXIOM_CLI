@@ -21,6 +21,8 @@ struct Bar {
 struct PriceData {
     std::vector<Bar>   bars;
     std::string        source;
+    std::string        exchange;
+    std::string        country;
 };
 
 // ---------------------------------------------------------------------------
@@ -29,6 +31,8 @@ struct PriceData {
 // ---------------------------------------------------------------------------
 struct AnalysisResult {
     std::string        symbol;
+    std::string        country;   // metadata
+    std::string        exchange;  // metadata
     Price              price     { 0.0 };
     double             change    { 0.0 };
     Price              sma50     { 0.0 };
@@ -75,6 +79,7 @@ struct SymbolMatch {
     std::string symbol;
     std::string name;
     std::string exchange;
+    std::string country;
 };
 
 } // namespace Axiom

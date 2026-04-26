@@ -2,12 +2,16 @@
 #include <iostream>
 #include <algorithm>
 #include <curl/curl.h>
-#include "../json.hpp"
+#include "json/json.hpp"
 #include <fstream>
 #include <filesystem>
 #include "core/paths.hpp"
+#include "service/config_service.hpp"
+#include "utils/logger.hpp"
 
 using json = nlohmann::json;
+using namespace Axiom::Service;
+using namespace Axiom::Utils;
 
 namespace Axiom::DataEngine {
 
@@ -66,8 +70,8 @@ static int score_match(const std::string& query, const SymbolMatch& match) {
 std::vector<SymbolMatch> resolve_symbol(const std::string& query) {
     if (query.empty()) return {};
 
-    const char* env_key = std::getenv("POLYGON_API_KEY");
-    std::string api_key = env_key ? env_key : "V6S0E1AUPN_X9X6_7Z0Z8_Y1_2_3_4";
+    std::string api_key = ConfigService::get_api_key();
+    if (api_key.empty()) api_key = "V6S0E1AUPN_X9X6_7Z0Z8_Y1_2_3_4";
 
     // Try fuzzy search first
     std::string url = "https://api.polygon.io/v3/reference/tickers?search=" + query + 
@@ -84,7 +88,8 @@ std::vector<SymbolMatch> resolve_symbol(const std::string& query) {
                     matches.push_back({
                         item.value("ticker", ""),
                         item.value("name", ""),
-                        item.value("primary_exchange", "OTC")
+                        item.value("primary_exchange", "OTC"),
+                        item.value("locale", "us")
                     });
                 }
             } else if (data.contains("results") == false && data.contains("ticker")) {
@@ -92,7 +97,8 @@ std::vector<SymbolMatch> resolve_symbol(const std::string& query) {
                 matches.push_back({
                     data.value("ticker", ""),
                     data.value("name", ""),
-                    data.value("primary_exchange", "OTC")
+                    data.value("primary_exchange", "OTC"),
+                    data.value("locale", "us")
                 });
             }
         } catch (...) {}
@@ -182,11 +188,12 @@ static void save_cache(const std::string& symbol, const PriceData& data) {
 // Core Data Fetcher
 // ---------------------------------------------------------------------------
 
-Result<PriceData> fetch_prices(const std::string& symbol, int years) {
+Result<PriceData> fetch_prices(std::string symbol, int years) {
+    std::transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
     if (auto cached = try_load_cache(symbol)) return Result<PriceData>::success(*cached);
 
-    const char* env_key = std::getenv("POLYGON_API_KEY");
-    std::string api_key = env_key ? env_key : "V6S0E1AUPN_X9X6_7Z0Z8_Y1_2_3_4";
+    std::string api_key = ConfigService::get_api_key();
+    if (api_key.empty()) api_key = "V6S0E1AUPN_X9X6_7Z0Z8_Y1_2_3_4";
 
     auto end_date = Axiom::Paths::today_str();
     auto start_date = Axiom::Paths::date_years_ago(years);
@@ -195,16 +202,23 @@ Result<PriceData> fetch_prices(const std::string& symbol, int years) {
                       "/range/1/day/" + start_date + "/" + end_date + 
                       "?adjusted=true&sort=asc&apiKey=" + api_key;
     
+    Logger::info("Fetching prices for " + symbol + " from " + start_date + " to " + end_date);
     auto raw = fetch_raw_url(url);
-    if (raw.empty()) return Result<PriceData>::fail(DataError::NetworkFailure);
+    if (raw.empty()) {
+        Logger::error("Network failure fetching prices for " + symbol + ". URL: " + url);
+        return Result<PriceData>::fail(DataError::NetworkFailure);
+    }
 
     try {
         auto data = json::parse(raw);
-        if (data.value("status", "") != "OK" || !data.contains("results")) 
+        auto status = data.value("status", "");
+        if ((status != "OK" && status != "DELAYED") || !data.contains("results")) {
+            Logger::warn("API returned non-OK status for " + symbol + ": " + status);
             return Result<PriceData>::fail(DataError::TickerNotFound);
+        }
 
         PriceData pd;
-        pd.source = "Polygon.io";
+        pd.source = (status == "DELAYED" ? "Polygon (Delayed)" : "Polygon.io");
         for (auto& bar : data["results"]) {
             pd.bars.push_back({
                 Price(bar.value("o", 0.0)),
@@ -214,6 +228,21 @@ Result<PriceData> fetch_prices(const std::string& symbol, int years) {
                 bar.value("v", (int64_t)0)
             });
         }
+        
+        // Fetch Metadata (Exchange/Country)
+        std::string meta_url = "https://api.polygon.io/v3/reference/tickers/" + symbol + "?apiKey=" + api_key;
+        auto meta_raw = fetch_raw_url(meta_url);
+        if (!meta_raw.empty()) {
+            try {
+                auto meta = json::parse(meta_raw);
+                if (meta.contains("results")) {
+                    pd.exchange = meta["results"].value("primary_exchange", "N/A");
+                    pd.country  = meta["results"].value("locale", "us");
+                    std::transform(pd.country.begin(), pd.country.end(), pd.country.begin(), ::toupper);
+                }
+            } catch (...) {}
+        }
+
         save_cache(symbol, pd);
         return Result<PriceData>::success(pd);
     } catch (...) {

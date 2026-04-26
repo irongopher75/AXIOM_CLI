@@ -2,8 +2,8 @@
 
 #include <string>
 #include <vector>
-#include "../core/domain.hpp"
-#include "../core/error.hpp"
+#include "core/domain.hpp"
+#include "core/error.hpp"
 
 namespace Axiom::DataEngine {
 
@@ -15,7 +15,7 @@ namespace Axiom::DataEngine {
 //
 // Returns DataError::NetworkFailure if all three tiers fail.
 // ---------------------------------------------------------------------------
-Result<PriceData> fetch_prices(const std::string& symbol, int years);
+Result<PriceData> fetch_prices(std::string symbol, int years);
 
 // ---------------------------------------------------------------------------
 // Search for ticker matches by name or symbol.  Tries Polygon first,

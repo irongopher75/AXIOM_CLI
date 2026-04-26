@@ -46,3 +46,31 @@ AXIOM CHANGE LOG
 - Implemented targeted module execution: `predict TSLA` only shows the Markov engine, while `analyze TSLA` only shows the technical suite.
 - Maintained legacy behavior: Bare ticker inputs (e.g., `TSLA`) continue to show the full combined report.
 - Hardened input tokenizer to handle multi-token commands and trailing whitespace.
+
+[2026-04-27 02:55] PROFESSIONAL CLI OVERHAUL (v0.3.7-beta)
+- Completed total migration to Scalable Industry Architecture (cmd/internal/pkg).
+- Implemented formal Service Layer (AnalysisService, ConfigService, ReplService) to decouple orchestration.
+- Upgraded CLI to support one-shot professional commands: `axiom analyze <ticker>`, `axiom predict <ticker>`.
+- Integrated persistent configuration management via `~/.axiom/config.json`.
+- Implemented professional `Logger` utility for institutional-grade diagnostics (~/.axiom/axiom.log).
+- Hardened Engine to handle auto-uppercasing and better error propagation.
+- Redefined project identity via professional README overhaul.
+
+[2026-04-27 03:04] INSTITUTIONAL SEARCH & HELP SYSTEM (v0.3.8-beta)
+- Implemented Interactive Symbol Selection Menu for fuzzy ticker/name matching.
+- Developed comprehensive CLI Help System with detailed command usage and examples.
+- Added support for explicit subcommands (`p`, `a`, `profile`) within the interactive REPL.
+- Enhanced `DataEngine` to provide higher-fidelity metadata (Exchange, Name) for search results.
+- Modularized Rendering Service to support deeper analysis views.
+
+[2026-04-27 03:06] INSTITUTIONAL METADATA ENRICHMENT (v0.3.9-beta)
+- Integrated Ticker Details API to fetch and display Country and Exchange metadata.
+- Upgraded UI footer to show primary market locale (e.g., [US] NASDAQ).
+- Enhanced Interactive Selection Menu with country flags and exchange labels.
+- Synchronized Domain models and Caching to persist institutional metadata.
+
+[2026-04-27 03:12] PIXEL-PERFECT UI BOUNDARIES (v0.4.0-alpha)
+- Implemented `column_width` UTF-8 aware calculator to fix alignment for sparklines and heatmaps.
+- Refactored `print_panel` with strict Total/Internal width enforcement.
+- Fixed corner junctions and vertical pipe alignment across all analysis views.
+- Synchronized borders for high-density institutional data cards.

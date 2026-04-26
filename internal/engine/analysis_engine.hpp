@@ -1,8 +1,8 @@
 #pragma once
 
 #include <string>
-#include "../core/domain.hpp"
-#include "../core/error.hpp"
+#include "core/domain.hpp"
+#include "core/error.hpp"
 
 namespace Axiom::AnalysisEngine {
 
