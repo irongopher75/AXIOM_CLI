@@ -60,10 +60,18 @@ void ReplService::run() {
         if (matches.size() == 1) {
             if (cmd == "predict") {
                 auto res = AnalysisService::predict(matches[0].symbol);
-                UI::print_panel(UI::render_markov(res), "REGIME: " + matches[0].symbol, "MARKOV MLE");
+                if (res) {
+                    UI::print_panel(UI::render_markov(res.value()), "REGIME: " + matches[0].symbol, "MARKOV MLE");
+                } else {
+                    std::cout << UI::fg(UI::CRIMSON) << "✖ Prediction Error: " << error_to_string(res.error()) << UI::RESET << "\n";
+                }
             } else {
                 auto res = AnalysisService::analyze(matches[0].symbol);
-                UI::print_panel(UI::render_analysis(res), matches[0].symbol, matches[0].exchange);
+                if (res) {
+                    UI::print_panel(UI::render_analysis(res.value()), matches[0].symbol, matches[0].exchange);
+                } else {
+                    std::cout << UI::fg(UI::CRIMSON) << "✖ Analysis Error: " << error_to_string(res.error()) << UI::RESET << "\n";
+                }
             }
         } else {
             std::cout << "\n  " << UI::fg(UI::MUTED) << "Multiple matches found — select one:" << UI::RESET << "\n";
@@ -87,10 +95,18 @@ void ReplService::run() {
                     if (idx >= 0 && idx < static_cast<int>(matches.size())) {
                         if (cmd == "predict") {
                             auto res = AnalysisService::predict(matches[idx].symbol);
-                            UI::print_panel(UI::render_markov(res), "REGIME: " + matches[idx].symbol, "MARKOV MLE");
+                            if (res) {
+                                UI::print_panel(UI::render_markov(res.value()), "REGIME: " + matches[idx].symbol, "MARKOV MLE");
+                            } else {
+                                std::cout << UI::fg(UI::CRIMSON) << "✖ Prediction Error: " << error_to_string(res.error()) << UI::RESET << "\n";
+                            }
                         } else {
                             auto res = AnalysisService::analyze(matches[idx].symbol);
-                            UI::print_panel(UI::render_analysis(res), matches[idx].symbol, matches[idx].exchange);
+                            if (res) {
+                                UI::print_panel(UI::render_analysis(res.value()), matches[idx].symbol, matches[idx].exchange);
+                            } else {
+                                std::cout << UI::fg(UI::CRIMSON) << "✖ Analysis Error: " << error_to_string(res.error()) << UI::RESET << "\n";
+                            }
                         }
                     }
                 }

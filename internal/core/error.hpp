@@ -10,7 +10,10 @@ enum class DataError {
     NetworkFailure,
     ParseError,
     TickerNotFound,
-    InsufficientData
+    InsufficientData,
+    ConfigError,
+    AuthError,
+    InternalError
 };
 
 inline std::string error_to_string(DataError err) {
@@ -20,26 +23,40 @@ inline std::string error_to_string(DataError err) {
         case DataError::ParseError: return "Failed to parse data";
         case DataError::TickerNotFound: return "Ticker not found";
         case DataError::InsufficientData: return "Insufficient historical data";
+        case DataError::ConfigError: return "Configuration error";
+        case DataError::AuthError: return "Authentication failed";
+        case DataError::InternalError: return "Internal engine error";
         default: return "Unknown error";
     }
 }
 
-template <typename T>
-class Result {
+// ---------------------------------------------------------------------------
+// Expected<T, E> - A lightweight backport of C++23 std::expected
+// ---------------------------------------------------------------------------
+template <typename T, typename E>
+class Expected {
 private:
-    std::variant<T, DataError> storage;
+    std::variant<T, E> storage;
 
 public:
-    Result(T val) : storage(val) {}
-    Result(DataError err) : storage(err) {}
-
-    static Result<T> success(const T& val) { return Result<T>(val); }
-    static Result<T> fail(DataError err) { return Result<T>(err); }
+    Expected(const T& val) : storage(val) {}
+    Expected(T&& val) : storage(std::move(val)) {}
+    Expected(const E& err) : storage(err) {}
+    Expected(E&& err) : storage(std::move(err)) {}
 
     bool has_value() const { return std::holds_alternative<T>(storage); }
+    explicit operator bool() const { return has_value(); }
+
     T& value() { return std::get<T>(storage); }
     const T& value() const { return std::get<T>(storage); }
-    DataError error() const { return std::get<DataError>(storage); }
+    
+    T& operator*() { return value(); }
+    const T& operator*() const { return value(); }
+    T* operator->() { return &value(); }
+    const T* operator->() const { return &value(); }
+
+    E& error() { return std::get<E>(storage); }
+    const E& error() const { return std::get<E>(storage); }
 };
 
 } // namespace Axiom

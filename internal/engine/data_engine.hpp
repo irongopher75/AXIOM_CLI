@@ -15,7 +15,7 @@ namespace Axiom::DataEngine {
 //
 // Returns DataError::NetworkFailure if all three tiers fail.
 // ---------------------------------------------------------------------------
-Result<PriceData> fetch_prices(std::string symbol, int years);
+Expected<PriceData, DataError> fetch_prices(std::string symbol, int years);
 
 // ---------------------------------------------------------------------------
 // Search for ticker matches by name or symbol.  Tries Polygon first,

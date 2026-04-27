@@ -14,6 +14,9 @@ public:
     
 private:
     static std::string api_key;
+    static std::string encrypt(const std::string& plaintext);
+    static std::string decrypt(const std::string& ciphertext);
+    static std::string get_machine_uuid();
 };
 
 } // namespace Axiom::Service

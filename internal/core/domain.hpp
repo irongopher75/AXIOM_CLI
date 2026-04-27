@@ -23,6 +23,7 @@ struct PriceData {
     std::string        source;
     std::string        exchange;
     std::string        country;
+    int64_t            last_updated { 0 }; // Unix timestamp
 };
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,12 @@ public:
     Price operator-(const Price& other) const { return Price(raw - other.raw); }
     Price operator*(double factor) const { return Price(static_cast<int64_t>(std::round(raw * factor))); }
     
+    // Institutional-grade fixed-point multiplication
+    Price operator*(const Price& other) const {
+        __int128 res = static_cast<__int128>(raw) * other.raw;
+        return Price(static_cast<int64_t>(res / SCALE));
+    }
+
     bool operator>(const Price& other) const { return raw > other.raw; }
     bool operator<(const Price& other) const { return raw < other.raw; }
     bool operator>=(const Price& other) const { return raw >= other.raw; }

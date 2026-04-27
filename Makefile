@@ -4,8 +4,8 @@
 
 CXX         := clang++
 CC          := clang
-CXXFLAGS    := -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinternal -Ipkg -Iconfigs
-CFLAGS      := -O2 -Wall
+CXXFLAGS    := -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinternal -Ipkg -Iconfigs -MMD -MP
+CFLAGS      := -O2 -Wall -MMD -MP
 LDFLAGS     := -lcurl
 
 # Paths
@@ -31,6 +31,9 @@ UI_OBJS      := $(patsubst internal/%.cpp, $(OBJ)/%.o, $(UI_SRCS))
 MAIN_OBJ     := $(OBJ)/cmd/axiom/main.o
 C_OBJ        := $(OBJ)/linenoise.o
 
+# Dependencies
+DEPS := $(ENGINE_OBJS:.o=.d) $(SERVICE_OBJS:.o=.d) $(UI_OBJS:.o=.d) $(MAIN_OBJ:.o=.d) $(C_OBJ:.o=.d)
+
 .PHONY: all clean install uninstall
 
 all: $(BIN)
@@ -52,11 +55,17 @@ $(OBJ)/%.o: internal/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+-include $(DEPS)
+
 install: $(BIN)
 	@mkdir -p $(INSTALL_DIR)
 	@cp $(BIN) $(INSTALL_DIR)/$(BIN)
 	@chmod +x $(INSTALL_DIR)/$(BIN)
 	@echo "  ✓  Installed to $(INSTALL_DIR)"
+
+uninstall:
+	@rm -f $(INSTALL_DIR)/$(BIN)
+	@echo "  ✓  Uninstalled from $(INSTALL_DIR)"
 
 clean:
 	rm -rf build $(BIN)

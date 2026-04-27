@@ -115,7 +115,12 @@ std::vector<SymbolMatch> resolve_symbol(const std::string& query) {
             auto data = json::parse(ex_raw);
             if (data.contains("results")) {
                 auto res = data["results"];
-                matches.push_back({ res.value("ticker", ""), res.value("name", ""), res.value("primary_exchange", "OTC") });
+                matches.push_back({ 
+                    res.value("ticker", ""), 
+                    res.value("name", ""), 
+                    res.value("primary_exchange", "OTC"),
+                    res.value("locale", "US") 
+                });
             }
         } catch (...) {}
     }
@@ -188,12 +193,15 @@ static void save_cache(const std::string& symbol, const PriceData& data) {
 // Core Data Fetcher
 // ---------------------------------------------------------------------------
 
-Result<PriceData> fetch_prices(std::string symbol, int years) {
+Expected<PriceData, DataError> fetch_prices(std::string symbol, int years) {
     std::transform(symbol.begin(), symbol.end(), symbol.begin(), ::toupper);
-    if (auto cached = try_load_cache(symbol)) return Result<PriceData>::success(*cached);
+    if (auto cached = try_load_cache(symbol)) return Expected<PriceData, DataError>(*cached);
 
     std::string api_key = ConfigService::get_api_key();
-    if (api_key.empty()) api_key = "V6S0E1AUPN_X9X6_7Z0Z8_Y1_2_3_4";
+    if (api_key.empty()) {
+        Logger::error("API Key is missing. Cannot fetch prices for " + symbol);
+        return DataError::AuthError;
+    }
 
     auto end_date = Axiom::Paths::today_str();
     auto start_date = Axiom::Paths::date_years_ago(years);
@@ -206,15 +214,20 @@ Result<PriceData> fetch_prices(std::string symbol, int years) {
     auto raw = fetch_raw_url(url);
     if (raw.empty()) {
         Logger::error("Network failure fetching prices for " + symbol + ". URL: " + url);
-        return Result<PriceData>::fail(DataError::NetworkFailure);
+        return DataError::NetworkFailure;
     }
 
     try {
         auto data = json::parse(raw);
         auto status = data.value("status", "");
+        if (status == "ERROR" && data.contains("error")) {
+            std::string err_msg = data["error"];
+            if (err_msg.find("API key") != std::string::npos) return DataError::AuthError;
+        }
+
         if ((status != "OK" && status != "DELAYED") || !data.contains("results")) {
             Logger::warn("API returned non-OK status for " + symbol + ": " + status);
-            return Result<PriceData>::fail(DataError::TickerNotFound);
+            return DataError::TickerNotFound;
         }
 
         PriceData pd;
@@ -244,9 +257,12 @@ Result<PriceData> fetch_prices(std::string symbol, int years) {
         }
 
         save_cache(symbol, pd);
-        return Result<PriceData>::success(pd);
+        return Expected<PriceData, DataError>(pd);
+    } catch (const std::exception& e) {
+        Logger::error("JSON parse error: " + std::string(e.what()));
+        return DataError::ParseError;
     } catch (...) {
-        return Result<PriceData>::fail(DataError::NetworkFailure);
+        return DataError::InternalError;
     }
 }
 

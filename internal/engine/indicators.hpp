@@ -48,44 +48,75 @@ inline double wma(const std::vector<double>& data, size_t period) {
     return val / weight_sum;
 }
 
+// Double Exponential Moving Average (DEMA)
+// DEMA = 2*EMA1 - EMA2(EMA1), where EMA2 is the EMA of EMA1
+// Both EMAs are computed over the same period
 inline double dema(const std::vector<double>& data, size_t period) {
-    if (data.size() < period * 2) return 0.0;
-    std::vector<double> e1;
+    if (data.size() < period) return 0.0;
+
     double alpha = 2.0 / (period + 1.0);
-    double v1 = data[0];
-    for (double d : data) { v1 = alpha * d + (1.0 - alpha) * v1; e1.push_back(v1); }
-    double v2 = e1[0];
-    std::vector<double> e2;
-    for (double d : e1) { v2 = alpha * d + (1.0 - alpha) * v2; e2.push_back(v2); }
-    return 2.0 * e1.back() - e2.back();
+
+    // Compute EMA1 over all data up to current point
+    std::vector<double> e1;
+    e1.reserve(data.size());
+    double ema1 = data[0];
+    for (double d : data) {
+        ema1 = alpha * d + (1.0 - alpha) * ema1;
+        e1.push_back(ema1);
+    }
+
+    // Compute EMA2 as EMA of EMA1
+    double ema2 = e1[0];
+    for (size_t i = 1; i < e1.size(); ++i) {
+        ema2 = alpha * e1[i] + (1.0 - alpha) * ema2;
+    }
+
+    return 2.0 * e1.back() - ema2;
 }
 
+// Hull Moving Average (HMA)
+// HMA = WMA( 2*WMA(n/2) - WMA(n) ), sqrt(n) )
+// Uses only data up to the current point (no look-ahead)
 inline double hma(const std::vector<double>& data, size_t period) {
     if (data.size() < period) return 0.0;
-    std::vector<double> half_wma, full_wma;
-    for (size_t i = period / 2; i <= data.size(); ++i) {
-        std::vector<double> sub(data.begin(), data.begin() + i);
-        half_wma.push_back(wma(sub, period / 2));
-    }
-    for (size_t i = period; i <= data.size(); ++i) {
-        std::vector<double> sub(data.begin(), data.begin() + i);
-        full_wma.push_back(wma(sub, period));
-    }
+
+    size_t half = period / 2;
+    size_t root = static_cast<size_t>(std::sqrt(period));
+
+    // Compute the raw HMA series: 2*WMA(half) - WMA(full) at each point
     std::vector<double> diff;
-    size_t n = std::min(half_wma.size(), full_wma.size());
-    for (size_t i = 0; i < n; ++i)
-        diff.push_back(2.0 * half_wma[half_wma.size() - n + i] - full_wma[full_wma.size() - n + i]);
-    return wma(diff, static_cast<size_t>(std::sqrt(period)));
+    diff.reserve(data.size() - period + 1);
+
+    for (size_t i = period; i <= data.size(); ++i) {
+        auto sub_half_start = data.begin() + i - half;
+        auto sub_full_start = data.begin() + i - period;
+        double w_h = wma(std::vector<double>(sub_half_start, data.begin() + i), half);
+        double w_f = wma(std::vector<double>(sub_full_start, data.begin() + i), period);
+        diff.push_back(2.0 * w_h - w_f);
+    }
+
+    return wma(diff, root);
 }
 
+// Kaufman Adaptive Moving Average - stateless version
+// Returns KAMA for the most recent bar only using data up to that point
 inline double kama(const std::vector<double>& data, size_t period = 10, size_t fast = 2, size_t slow = 30) {
     if (data.size() < period + 1) return 0.0;
-    double er = std::abs(data.back() - data[data.size() - period]) / 
-                std::accumulate(data.end() - period, data.end(), 0.0, [](double s, double v){ return s + std::abs(v); });
+
+    // Compute Efficiency Ratio (ER) over the last `period` bars
+    double signal = std::abs(data.back() - data[data.size() - period]);
+    double noise = std::accumulate(data.end() - period, data.end(), 0.0,
+                                   [](double s, double v){ return s + std::abs(v); });
+    if (noise == 0.0) return data.back(); // No volatility, KAMA = price
+    double er = signal / noise;
+
+    // Smoothing Constant (SC)
     double sc = std::pow(er * (2.0/(fast+1) - 2.0/(slow+1)) + 2.0/(slow+1), 2);
-    static double last_kama = data[0];
-    last_kama = last_kama + sc * (data.back() - last_kama);
-    return last_kama;
+
+    // KAMA = previous KAMA + SC * (current price - previous KAMA)
+    // We approximate previous KAMA as the EMA of the prior period
+    double prev_kama = ema(std::vector<double>(data.end() - period - 1, data.end() - 1), period);
+    return prev_kama + sc * (data.back() - prev_kama);
 }
 
 // ─── MOMENTUM / OSCILLATORS ──────────────────────────────────────────────────
@@ -196,13 +227,18 @@ inline double obv(const std::vector<Bar>& bars) {
     return obv_val;
 }
 
+// Volume Weighted Average Price (VWAP)
+// For intraday: should reset at session open (9:30 AM ET for US equities)
+// This implementation uses all provided bars - caller must pass session-scoped data
 inline double vwap(const std::vector<Bar>& bars) {
-    double pv = 0, v = 0;
-    for (auto& b : bars) {
+    if (bars.empty()) return 0.0;
+    double pv = 0.0, v = 0.0;
+    for (const auto& b : bars) {
         double tp = (b.h.to_double() + b.l.to_double() + b.c.to_double()) / 3.0;
-        pv += tp * b.v; v += b.v;
+        pv += tp * b.v;
+        v += b.v;
     }
-    return v > 0 ? pv / v : 0.0;
+    return v > 0.0 ? pv / v : 0.0;
 }
 
 inline double cmf(const std::vector<Bar>& bars, size_t period = 20) {
@@ -310,16 +346,29 @@ inline double hurst(const std::vector<double>& data) {
 
 // ─── CYCLE / REGIME ──────────────────────────────────────────────────────────
 
+// Fisher Transform - stateless version
+// Normalizes price to [-1, 1] range, then applies inverse hyperbolic tangent
 inline double fisher(const std::vector<double>& data, size_t period = 10) {
-    if (data.size() < period) return 0;
+    if (data.size() < period) return 0.0;
+
+    // Find min/max over the lookback period
     double mn = data.back(), mx = data.back();
     for (size_t i = data.size() - period; i < data.size(); ++i) {
-        mn = std::min(mn, data[i]); mx = std::max(mx, data[i]);
+        mn = std::min(mn, data[i]);
+        mx = std::max(mx, data[i]);
     }
-    double x = (mx == mn) ? 0 : 2.0 * ((data.back() - mn) / (mx - mn) - 0.5);
+
+    // Normalize to [-1, 1]
+    double x = (mx == mn) ? 0.0 : 2.0 * ((data.back() - mn) / (mx - mn) - 0.5);
     x = std::clamp(x, -0.999, 0.999);
-    static double val = 0;
-    val = 0.33 * 2.0 * x + 0.67 * val;
+
+    // Apply smoothing (weighted average with prior value)
+    // Approximate prior value as the center of the period
+    double prior = data.size() >= period + 1 ? data[data.size() - period / 2] : data.front();
+    double prior_norm = (mx == mn) ? 0.0 : 2.0 * ((prior - mn) / (mx - mn) - 0.5);
+    prior_norm = std::clamp(prior_norm, -0.999, 0.999);
+    double val = 0.33 * 2.0 * x + 0.67 * prior_norm;
+
     return 0.5 * std::log((1.0 + val) / (1.0 - val));
 }
 
