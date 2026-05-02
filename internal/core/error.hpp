@@ -4,28 +4,41 @@
 
 namespace Axiom {
 
-enum class DataError {
+enum class AxiomError {
     None,
-    RateLimit,
-    NetworkFailure,
-    ParseError,
+    NetworkTimeout,
+    RateLimited,          // 429 — back off and retry
+    AuthFailed,           // API key invalid or expired
+    MarketClosed,         // Not an error, just a state
+    SymbolDelisted,       // Permanent — purge from cache
+    PartialPayload,       // Truncated JSON — discard and re-fetch
+    ClockSkew,            // Bar timestamp out of expected range
+    CacheCorruption,      // DuckDB read returned unexpected schema
+    ConfigSaveFailure,
     TickerNotFound,
     InsufficientData,
     ConfigError,
-    AuthError,
+    ParseError,
     InternalError
 };
 
-inline std::string error_to_string(DataError err) {
+inline std::string error_to_string(AxiomError err) {
     switch (err) {
-        case DataError::RateLimit: return "Rate limit exceeded";
-        case DataError::NetworkFailure: return "Network connection failed";
-        case DataError::ParseError: return "Failed to parse data";
-        case DataError::TickerNotFound: return "Ticker not found";
-        case DataError::InsufficientData: return "Insufficient historical data";
-        case DataError::ConfigError: return "Configuration error";
-        case DataError::AuthError: return "Authentication failed";
-        case DataError::InternalError: return "Internal engine error";
+        case AxiomError::NetworkTimeout: return "Network timeout";
+        case AxiomError::RateLimited: return "Rate limit exceeded";
+        case AxiomError::AuthFailed: return "Authentication failed";
+        case AxiomError::MarketClosed: return "Market closed";
+        case AxiomError::SymbolDelisted: return "Symbol delisted";
+        case AxiomError::PartialPayload: return "Partial payload received";
+        case AxiomError::ClockSkew: return "Clock skew detected";
+        case AxiomError::CacheCorruption: return "Cache corruption detected";
+        case AxiomError::ConfigSaveFailure: return "Config save failure";
+        case AxiomError::TickerNotFound: return "Ticker not found";
+        case AxiomError::InsufficientData: return "Insufficient historical data";
+        case AxiomError::ConfigError: return "Configuration error";
+        case AxiomError::ParseError: return "Failed to parse data";
+        case AxiomError::InternalError: return "Internal engine error";
+        case AxiomError::None: return "No error";
         default: return "Unknown error";
     }
 }

@@ -16,7 +16,7 @@ void ReplService::run() {
     linenoiseHistoryLoad(h_path.c_str());
 
     while (true) {
-        std::string prompt = "\033[38;2;26;158;110maxiom > \033[0m";
+        std::string prompt = UI::fg(UI::EMERALD) + "axiom > " + UI::RESET;
         line = linenoise(prompt.c_str());
         
         if (!line) break;
@@ -90,9 +90,10 @@ void ReplService::run() {
             if (sel_line) {
                 std::string sel(sel_line);
                 free(sel_line);
-                if (sel != "q" && !sel.empty() && std::isdigit(sel[0])) {
-                    int idx = std::stoi(sel) - 1;
-                    if (idx >= 0 && idx < static_cast<int>(matches.size())) {
+                if (sel != "q" && !sel.empty() && std::isdigit(static_cast<unsigned char>(sel[0]))) {
+                    try {
+                        int idx = std::stoi(sel) - 1;
+                        if (idx >= 0 && idx < static_cast<int>(matches.size())) {
                         if (cmd == "predict") {
                             auto res = AnalysisService::predict(matches[idx].symbol);
                             if (res) {
@@ -108,6 +109,9 @@ void ReplService::run() {
                                 std::cout << UI::fg(UI::CRIMSON) << "✖ Analysis Error: " << error_to_string(res.error()) << UI::RESET << "\n";
                             }
                         }
+                        }
+                    } catch (const std::exception&) {
+                        std::cout << UI::fg(UI::CRIMSON) << "✖ Invalid selection." << UI::RESET << "\n";
                     }
                 }
             }

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
-#include "types.hpp"
+#include "price.hpp"
 
 namespace Axiom {
 

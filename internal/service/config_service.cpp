@@ -1,114 +1,111 @@
 #include "config_service.hpp"
 #include "core/paths.hpp"
-#include "json/json.hpp"
+#include "utils/logger.hpp"
 #include <fstream>
-#include <filesystem>
-
-using json = nlohmann::json;
-
 #include <iostream>
-#include <array>
-#include <memory>
-#include <cstdio>
+#include <cstdlib>
+#include <pwd.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 namespace Axiom::Service {
 
-std::string ConfigService::api_key = "";
+std::unordered_map<std::string, std::string> ConfigService::m_config_map;
 
-std::string ConfigService::get_machine_uuid() {
-#ifdef __APPLE__
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("ioreg -rd1 -c IOPlatformExpertDevice | grep -E 'IOPlatformUUID' | awk -F' = ' '{print $2}' | tr -d '\"'", "r"), pclose);
-    if (!pipe) return "DEFAULT_SALT_AXIOM";
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
+std::filesystem::path ConfigService::get_config_path() {
+    if (const char* xdg = std::getenv("XDG_CONFIG_HOME")) {
+        if (xdg[0] != '\0') {
+            return std::filesystem::path(xdg) / "axiom" / "config";
+        }
     }
-    result.erase(result.find_last_not_of(" \n\r\t") + 1);
-    return result.empty() ? "DEFAULT_SALT_AXIOM" : result;
-#else
-    return "LINUX_SALT_PLACEHOLDER";
-#endif
+
+    const char* home = std::getenv("HOME");
+    if (!home || home[0] == '\0') {
+        home = getpwuid(getuid())->pw_dir;
+    }
+
+    return std::filesystem::path(home) / ".config" / "axiom" / "config";
 }
 
-std::string ConfigService::encrypt(const std::string& plaintext) {
-    if (plaintext.empty()) return "";
-    std::string uuid = get_machine_uuid();
-    std::string ciphertext = plaintext;
-    for (size_t i = 0; i < ciphertext.size(); ++i) {
-        ciphertext[i] ^= uuid[i % uuid.size()];
+std::optional<std::string> ConfigService::resolve_api_key(std::string_view env_var_name, std::string_view config_key) {
+    if (const char* env_val = std::getenv(env_var_name.data())) {
+        if (env_val[0] != '\0') {
+            return std::string(env_val);
+        }
     }
-    // Simple hex encoding for visibility in JSON
-    static const char* hex = "0123456789ABCDEF";
-    std::string encoded;
-    for (unsigned char c : ciphertext) {
-        encoded += hex[c >> 4];
-        encoded += hex[c & 0xf];
-    }
-    return "ENC:" + encoded;
-}
 
-std::string ConfigService::decrypt(const std::string& ciphertext) {
-    if (ciphertext.substr(0, 4) != "ENC:") return ciphertext;
-    std::string raw;
-    std::string hex_part = ciphertext.substr(4);
-    for (size_t i = 0; i < hex_part.size(); i += 2) {
-        std::string byteString = hex_part.substr(i, 2);
-        char byte = (char) strtol(byteString.c_str(), NULL, 16);
-        raw += byte;
+    auto it = m_config_map.find(std::string(config_key));
+    if (it != m_config_map.end() && !it->second.empty()) {
+        return it->second;
     }
-    std::string uuid = get_machine_uuid();
-    for (size_t i = 0; i < raw.size(); ++i) {
-        raw[i] ^= uuid[i % uuid.size()];
-    }
-    return raw;
+
+    return std::nullopt;
 }
 
 bool ConfigService::load_config() {
-    auto path = Paths::get_path("config.json");
+    auto path = get_config_path();
     if (!std::filesystem::exists(path)) return false;
 
     try {
-        std::ifstream f(path);
-        json j; f >> j;
-        
-        // Schema Validation
-        if (!j.contains("api_key") || !j["api_key"].is_string()) {
-            std::cerr << "✖ Config Error: Missing or invalid 'api_key' field.\n";
-            return false;
-        }
+        std::ifstream file(path);
+        if (!file.is_open()) return false;
 
-        api_key = decrypt(j["api_key"].get<std::string>());
+        std::string line;
+        while (std::getline(file, line)) {
+            auto pos = line.find('=');
+            if (pos != std::string::npos) {
+                std::string k = line.substr(0, pos);
+                std::string v = line.substr(pos + 1);
+                m_config_map[k] = v;
+            }
+        }
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "✖ Config Parse Error: " << e.what() << "\n";
+        Utils::Logger::error("Config Parse Error: " + std::string(e.what()));
         return false;
     }
 }
 
 bool ConfigService::save_config() {
-    auto path = Paths::get_path("config.json");
+    auto path = get_config_path();
     try {
-        json j;
-        j["api_key"] = encrypt(api_key);
-        std::ofstream f(path);
-        f << j.dump(4);
+        std::error_code ec;
+        std::filesystem::create_directories(path.parent_path(), ec);
+        if (ec) {
+            Utils::Logger::error("Failed to create config directory: " + ec.message());
+            return false;
+        }
+
+        std::ofstream file(path);
+        if (!file.is_open()) {
+            Utils::Logger::error("Failed to open config file for writing: " + path.string());
+            return false;
+        }
+
+        for (const auto& [key, value] : m_config_map) {
+            file << key << "=" << value << "\n";
+        }
+        file.close();
+
+        // Set permissions to 600 — owner read/write only
+        if (chmod(path.c_str(), S_IRUSR | S_IWUSR) != 0) {
+            Utils::Logger::warn("Warning: could not set config file permissions to 600");
+        }
         return true;
-    } catch (...) {
+    } catch (const std::exception& e) {
+        Utils::Logger::error("Config Save Error: " + std::string(e.what()));
         return false;
     }
 }
 
 std::string ConfigService::get_api_key() {
-    if (api_key.empty()) {
-        const char* env = std::getenv("POLYGON_API_KEY");
-        if (env) return std::string(env);
-    }
-    return api_key;
+    auto key = resolve_api_key("AXIOM_API_KEY_POLYGON", "POLYGON_API_KEY");
+    if (key) return *key;
+    return "";
 }
 
 void ConfigService::set_api_key(const std::string& key) {
-    api_key = key;
+    m_config_map["POLYGON_API_KEY"] = key;
     save_config();
 }
 

@@ -56,7 +56,7 @@ inline nlohmann::json markov_to_json(const MarkovResult& r) {
     return j;
 }
 
-inline std::string render_analysis(const AnalysisResult& r) {
+inline std::string render_analysis(const AnalysisResult& r, bool full = false) {
     if (g_output_format == OutputFormat::JSON) {
         if (!r.ok) {
             return nlohmann::json{{"symbol", r.symbol}, {"error", "Analysis failed"}, {"ok", false}}.dump(2);
@@ -101,26 +101,39 @@ inline std::string render_analysis(const AnalysisResult& r) {
         << std::string(10, ' ') << fg(MUTED) << std::left << std::setw(12) << "HURST" << RESET << std::fixed << std::setprecision(2) << r.hurst << "\n";
     out << "  " << fg(MUTED) << std::left << std::setw(12) << "BB RANGE" << RESET << r.bb_lower.str(2) << "-" << r.bb_upper.str(2) << "\n\n";
 
-    // Technical Profile - Categorized
-    std::map<std::string, std::vector<std::string>> categories = {
-        {"TREND", {"WMA-20", "DEMA-20", "HMA-20", "KAMA-10", "LR_SLOPE"}},
-        {"MOMENTUM", {"STOCH_K", "WILL_R", "CCI-20", "STOCH_RSI", "FISHER"}},
-        {"VOL/VOL", {"DONCH_U", "DONCH_L", "ZSCORE", "OBV", "CMF-20"}}
-    };
-
-    for (auto const& [cat, keys] : categories) {
-        out << "  " << BOLD << fg(MUTED) << cat << RESET << "\n";
+    if (full) {
+        out << "  " << BOLD << fg(MUTED) << "ALL METRICS (--full)" << RESET << "\n";
         int count = 0;
-        for (const auto& k : keys) {
-            if (r.stats.count(k)) {
-                out << "  " << fg(MUTED) << std::left << std::setw(12) << k << RESET
-                    << std::right << std::setw(8) << format_large(r.stats.at(k));
-                if (++count % 3 == 0) out << "\n";
-                else out << std::string(4, ' ');
-            }
+        for (const auto& [k, v] : r.stats) {
+            out << "  " << fg(MUTED) << std::left << std::setw(12) << k << RESET
+                << std::right << std::setw(8) << format_large(v);
+            if (++count % 3 == 0) out << "\n";
+            else out << std::string(4, ' ');
         }
         if (count % 3 != 0) out << "\n";
         out << "\n";
+    } else {
+        // Technical Profile - Categorized
+        std::map<std::string, std::vector<std::string>> categories = {
+            {"TREND", {"WMA-20", "DEMA-20", "HMA-20", "KAMA-10", "LR_SLOPE"}},
+            {"MOMENTUM", {"STOCH_K", "WILL_R", "CCI-20", "STOCH_RSI", "FISHER"}},
+            {"VOL/VOL", {"DONCH_U", "DONCH_L", "ZSCORE", "OBV", "CMF-20"}}
+        };
+
+        for (auto const& [cat, keys] : categories) {
+            out << "  " << BOLD << fg(MUTED) << cat << RESET << "\n";
+            int count = 0;
+            for (const auto& k : keys) {
+                if (r.stats.count(k)) {
+                    out << "  " << fg(MUTED) << std::left << std::setw(12) << k << RESET
+                        << std::right << std::setw(8) << format_large(r.stats.at(k));
+                    if (++count % 3 == 0) out << "\n";
+                    else out << std::string(4, ' ');
+                }
+            }
+            if (count % 3 != 0) out << "\n";
+            out << "\n";
+        }
     }
 
     std::string chart = get_chart(r.history);
@@ -156,14 +169,7 @@ inline std::string render_markov(const MarkovResult& r) {
 
     if (!r.transition_matrix.empty()) {
         out << "\n";
-        HeatmapOptions hopts;
-        hopts.cell_width = 12;
-        hopts.cell_height = 1;
-        hopts.show_colorbar = true;
-        hopts.palette = Palette::Viridis;
-
-        auto hm = Heatmap::markov(r.transition_matrix, {"Bearish", "Neutral", "Bullish"}, hopts);
-        out << hm.to_string();
+        out << Heatmap::markov(r.transition_matrix, {"Bearish", "Neutral", "Bullish"});
     }
 
     out << "  " << DIM << "Source: " << r.source << RESET;

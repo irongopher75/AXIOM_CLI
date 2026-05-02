@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <sstream>
 #include <regex>
-#include "core/types.hpp"
+#include "core/price.hpp"
 #include "core/domain.hpp"
 
 namespace Axiom::UI {
@@ -59,9 +59,9 @@ inline int column_width(const std::string& s) {
     for (size_t i = 0; i < stripped.length(); ) {
         unsigned char c = static_cast<unsigned char>(stripped[i]);
         if (c <= 127) { width += 1; i += 1; }
-        else if ((c & 0xE0) == 0xC0) { width += 1; i += 2; }
-        else if ((c & 0xF0) == 0xE0) { width += 1; i += 3; }
-        else if ((c & 0xF8) == 0xF0) { width += 1; i += 4; }
+        else if ((c & 0xE0) == 0xC0 && i + 1 < stripped.length()) { width += 1; i += 2; }
+        else if ((c & 0xF0) == 0xE0 && i + 2 < stripped.length()) { width += 1; i += 3; }
+        else if ((c & 0xF8) == 0xF0 && i + 3 < stripped.length()) { width += 1; i += 4; }
         else { i += 1; } // Fallback
     }
     return width;

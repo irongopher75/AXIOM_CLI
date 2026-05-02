@@ -31,19 +31,12 @@ file(GLOB_RECURSE SOURCES
 
 # --- Include Directories ---
 include_directories(internal pkg configs)
-if(APPLE)
-    include_directories(/opt/homebrew/opt/openssl/include)
-    link_directories(/opt/homebrew/opt/openssl/lib)
-endif()
 
 # --- Executable ---
 add_executable(axiom ${SOURCES})
 
 # --- Link Libraries ---
 target_link_libraries(axiom PRIVATE CURL::libcurl)
-if(APPLE)
-    target_link_libraries(axiom PRIVATE crypto)
-endif()
 
 # --- Installation ---
 install(TARGETS axiom DESTINATION bin)

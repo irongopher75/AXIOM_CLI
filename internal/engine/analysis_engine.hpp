@@ -12,7 +12,7 @@ namespace Axiom::AnalysisEngine {
 //
 // Fetches 1 year of daily data via DataEngine::fetch_prices().
 // ---------------------------------------------------------------------------
-Expected<AnalysisResult, DataError> run_analysis(const std::string& symbol);
+Expected<AnalysisResult, AxiomError> run_analysis(const std::string& symbol);
 
 // ---------------------------------------------------------------------------
 // Markov chain regime predictor.
@@ -22,6 +22,6 @@ Expected<AnalysisResult, DataError> run_analysis(const std::string& symbol);
 //
 // Fetches 2 years of daily data via DataEngine::fetch_prices().
 // ---------------------------------------------------------------------------
-Expected<MarkovResult, DataError> run_markov(const std::string& symbol);
+Expected<MarkovResult, AxiomError> run_markov(const std::string& symbol);
 
 } // namespace Axiom::AnalysisEngine

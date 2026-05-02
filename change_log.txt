@@ -74,3 +74,24 @@ AXIOM CHANGE LOG
 - Refactored `print_panel` with strict Total/Internal width enforcement.
 - Fixed corner junctions and vertical pipe alignment across all analysis views.
 - Synchronized borders for high-density institutional data cards.
+
+[2026-04-27 20:45] ENGINE HARDENING & ERROR CORRECTION (v0.4.1-alpha)
+- Fixed KAMA (Kaufman Adaptive Moving Average) noise calculation (now uses sum of absolute changes).
+- Hardened Hurst Exponent calculation with zero/negative price guards and division-by-zero protection.
+- Improved 'resolve_symbol' duplicate filtering to maintain score-based ranking integrity.
+- Refactored 'render_analysis' to use 'inline' definitions, resolving TU redefinition errors.
+- Standardized JSON error response schema for machine-readable output mode.
+
+[2026-04-28 12:00] SECURITY & STABILITY (v0.4.2-alpha)
+- Hardened data fetching logic and performed error audit in C++ backend.
+- Secured ConfigService handling of API keys and global settings.
+
+[2026-04-29 14:00] FEATURE COMPLETENESS (v0.4.3-alpha)
+- Finalized 'profile --full' command for comprehensive statistical metrics dump.
+- Addressed silent config save failures in 'config_service.cpp' with proper logging.
+- Stabilized AnalysisService data propagation.
+
+[2026-05-02 18:00] TESTING SUITE & VERIFICATION (v0.5.0-beta)
+- Integrated 'doctest' framework for automated testing pipelines.
+- Created dedicated 'tests/' directory featuring 'test_main.cpp' and 'test_ui.cpp'.
+- Current test suite successfully passes and validates Core logic and UI components.

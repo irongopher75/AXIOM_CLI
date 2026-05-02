@@ -13,9 +13,9 @@ namespace Axiom::DataEngine {
 //   2. Finnhub     (institutional backup, rate-limited)
 //   3. Yahoo       (public fallback)
 //
-// Returns DataError::NetworkFailure if all three tiers fail.
+// Returns AxiomError::NetworkTimeout if all three tiers fail.
 // ---------------------------------------------------------------------------
-Expected<PriceData, DataError> fetch_prices(std::string symbol, int years);
+Expected<PriceData, AxiomError> fetch_prices(std::string symbol, int years);
 
 // ---------------------------------------------------------------------------
 // Search for ticker matches by name or symbol.  Tries Polygon first,

@@ -28,8 +28,14 @@ public:
     
     // Institutional-grade fixed-point multiplication
     Price operator*(const Price& other) const {
+#if defined(__GNUC__) || defined(__clang__)
         __int128 res = static_cast<__int128>(raw) * other.raw;
         return Price(static_cast<int64_t>(res / SCALE));
+#else
+        // Fallback for MSVC and other compilers without __int128
+        double res = static_cast<double>(raw) * static_cast<double>(other.raw) / SCALE;
+        return Price(static_cast<int64_t>(std::round(res)));
+#endif
     }
 
     bool operator>(const Price& other) const { return raw > other.raw; }

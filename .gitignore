@@ -4,6 +4,7 @@ build/
 *.o
 test_price
 build/test_*
+*.d
 
 # Persistent Data (Local Fallbacks)
 .poly_vault

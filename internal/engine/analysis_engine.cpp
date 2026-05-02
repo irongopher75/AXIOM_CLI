@@ -23,7 +23,7 @@ using namespace Axiom::Utils;
 
 namespace Axiom::AnalysisEngine {
 
-Expected<AnalysisResult, DataError> run_analysis(const std::string& symbol) {
+Expected<AnalysisResult, AxiomError> run_analysis(const std::string& symbol) {
     auto fetched = DataEngine::fetch_prices(symbol, 1);
     if (!fetched) {
         Logger::error("Analysis failed for " + symbol + ": " + error_to_string(fetched.error()));
@@ -40,7 +40,7 @@ Expected<AnalysisResult, DataError> run_analysis(const std::string& symbol) {
 
     if (data.bars.empty()) {
         Logger::warn("No bars found for " + symbol);
-        return DataError::InsufficientData;
+        return AxiomError::InsufficientData;
     }
 
     std::vector<double> closes;
@@ -96,17 +96,17 @@ Expected<AnalysisResult, DataError> run_analysis(const std::string& symbol) {
 
     res.timestamp = now_str();
     Logger::debug("Analysis complete for " + symbol);
-    return Expected<AnalysisResult, DataError>(res);
+    return Expected<AnalysisResult, AxiomError>(res);
 }
 
-Expected<MarkovResult, DataError> run_markov(const std::string& symbol) {
+Expected<MarkovResult, AxiomError> run_markov(const std::string& symbol) {
     auto fetched = DataEngine::fetch_prices(symbol, 2);
     if (!fetched) return fetched.error();
 
     auto& data = fetched.value();
     if (data.bars.size() < 10) {
         Logger::warn("Insufficient data for Markov model on " + symbol);
-        return DataError::InsufficientData;
+        return AxiomError::InsufficientData;
     }
 
     MarkovResult res;
@@ -165,7 +165,7 @@ Expected<MarkovResult, DataError> run_markov(const std::string& symbol) {
 
     res.timestamp = now_str();
     Logger::debug("Markov prediction complete for " + symbol);
-    return Expected<MarkovResult, DataError>(res);
+    return Expected<MarkovResult, AxiomError>(res);
 }
 
 } // namespace Axiom::AnalysisEngine

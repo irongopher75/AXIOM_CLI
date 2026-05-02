@@ -5,12 +5,12 @@
 
 namespace Axiom::Service {
 
-Expected<AnalysisResult, DataError> AnalysisService::analyze(const std::string& symbol) {
+Expected<AnalysisResult, AxiomError> AnalysisService::analyze(const std::string& symbol) {
     // Service layer orchestrates the flow: Fetch -> Process
     return AnalysisEngine::run_analysis(symbol);
 }
 
-Expected<MarkovResult, DataError> AnalysisService::predict(const std::string& symbol) {
+Expected<MarkovResult, AxiomError> AnalysisService::predict(const std::string& symbol) {
     return AnalysisEngine::run_markov(symbol);
 }
 

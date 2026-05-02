@@ -6,7 +6,7 @@ CXX         := clang++
 CC          := clang
 CXXFLAGS    := -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinternal -Ipkg -Iconfigs -MMD -MP
 CFLAGS      := -O2 -Wall -MMD -MP
-LDFLAGS     := -lcurl
+LDFLAGS     := -lcurl -lsqlite3
 
 # Paths
 OBJ         := build/obj
@@ -16,7 +16,8 @@ INSTALL_DIR := $(PREFIX)/bin
 
 # Sources
 ENGINE_SRCS  := internal/engine/data_engine.cpp \
-                internal/engine/analysis_engine.cpp
+                internal/engine/analysis_engine.cpp \
+                internal/engine/sqlite_store.cpp
 SERVICE_SRCS := internal/service/analysis_service.cpp \
                 internal/service/config_service.cpp \
                 internal/service/repl_service.cpp
@@ -41,6 +42,19 @@ all: $(BIN)
 $(BIN): $(ENGINE_OBJS) $(SERVICE_OBJS) $(UI_OBJS) $(MAIN_OBJ) $(C_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 	@echo "  ✓  $@ binary ready"
+
+# Test Targets
+TEST_SRCS := tests/test_main.cpp tests/test_ui.cpp
+TEST_OBJS := $(patsubst tests/%.cpp, $(OBJ)/tests/%.o, $(TEST_SRCS))
+
+test: $(ENGINE_OBJS) $(SERVICE_OBJS) $(UI_OBJS) $(C_OBJ) $(TEST_OBJS)
+	$(CXX) $(CXXFLAGS) $^ -o build/run_tests $(LDFLAGS)
+	@echo "  ✓  Test binary ready"
+	./build/run_tests
+
+$(OBJ)/tests/%.o: tests/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -Itests -c $< -o $@
 
 # Compile rules
 $(OBJ)/%.o: internal/%.cpp

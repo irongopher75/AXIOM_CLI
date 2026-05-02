@@ -105,13 +105,16 @@ inline double kama(const std::vector<double>& data, size_t period = 10, size_t f
 
     // Compute Efficiency Ratio (ER) over the last `period` bars
     double signal = std::abs(data.back() - data[data.size() - period]);
-    double noise = std::accumulate(data.end() - period, data.end(), 0.0,
-                                   [](double s, double v){ return s + std::abs(v); });
+    double noise = 0.0;
+    for (size_t i = data.size() - period; i < data.size(); ++i) {
+        noise += std::abs(data[i] - data[i-1]);
+    }
+
     if (noise == 0.0) return data.back(); // No volatility, KAMA = price
     double er = signal / noise;
 
     // Smoothing Constant (SC)
-    double sc = std::pow(er * (2.0/(fast+1) - 2.0/(slow+1)) + 2.0/(slow+1), 2);
+    double sc = std::pow(er * (2.0/(fast+1.0) - 2.0/(slow+1.0)) + 2.0/(slow+1.0), 2);
 
     // KAMA = previous KAMA + SC * (current price - previous KAMA)
     // We approximate previous KAMA as the EMA of the prior period
@@ -297,11 +300,57 @@ inline std::pair<double, double> aroon(const std::vector<Bar>& bars, size_t peri
     return {100.0 * hh / (period - 1), 100.0 * ll / (period - 1)};
 }
 
-inline double psar(const std::vector<Bar>& bars, [[maybe_unused]] double accel = 0.02, [[maybe_unused]] double max_accel = 0.2) {
+// Parabolic SAR - Stateful implementation using acceleration factor
+// Note: For accurate multi-call PSAR, caller must maintain state (af, ep, trend).
+// This single-call version estimates from available data using a heuristic approach.
+inline double psar(const std::vector<Bar>& bars, double accel = 0.02, double max_accel = 0.2) {
     if (bars.size() < 2) return bars.back().c.to_double();
-    // Simplified logic: for full accuracy PSAR needs state persistence.
-    // This is an approximation of the last step.
-    return bars.back().l.to_double(); // Placeholder
+
+    // Detect current trend direction from recent price action
+    bool uptrend = bars.back().c > bars[bars.size() - 2].c;
+
+    // Find extreme point (highest high in uptrend, lowest low in downtrend)
+    // Look back up to 10 bars to estimate the EP
+    size_t lookback = std::min(static_cast<size_t>(10), bars.size() - 1);
+    double ep = uptrend ? bars.back().h.to_double() : bars.back().l.to_double();
+
+    for (size_t i = 1; i <= lookback; ++i) {
+        double val = uptrend ? bars[bars.size() - i].h.to_double()
+                             : bars[bars.size() - i].l.to_double();
+        if (uptrend && val > ep) ep = val;
+        if (!uptrend && val < ep) ep = val;
+    }
+
+    // Estimate acceleration factor based on trend consistency
+    // Count how many of the last 5 bars continued the trend
+    double af = accel;
+    size_t trend_count = 0;
+    for (size_t i = 1; i <= lookback && i <= 5; ++i) {
+        bool bar_uptrend = bars[bars.size() - i].c > bars[bars.size() - i - 1].c;
+        if (bar_uptrend == uptrend) trend_count++;
+    }
+    af = std::min(accel * trend_count, max_accel);
+
+    // Calculate prior SAR as the opposite extreme (support in uptrend, resistance in downtrend)
+    double prior_sar = uptrend ? bars.back().l.to_double() : bars.back().h.to_double();
+    for (size_t i = 1; i <= lookback; ++i) {
+        double val = uptrend ? bars[bars.size() - i].l.to_double()
+                             : bars[bars.size() - i].h.to_double();
+        if (uptrend && val < prior_sar) prior_sar = val;
+        if (!uptrend && val > prior_sar) prior_sar = val;
+    }
+
+    // PSAR = prior_sar + af * (ep - prior_sar)
+    double psar_val = prior_sar + af * (ep - prior_sar);
+
+    // In uptrend, PSAR should be below price; in downtrend, above
+    if (uptrend && psar_val > bars.back().c.to_double()) {
+        psar_val = bars.back().l.to_double(); // Trend reversal, reset to extreme
+    } else if (!uptrend && psar_val < bars.back().c.to_double()) {
+        psar_val = bars.back().h.to_double(); // Trend reversal, reset to extreme
+    }
+
+    return psar_val;
 }
 
 // ─── STATISTICAL ─────────────────────────────────────────────────────────────
@@ -333,7 +382,13 @@ inline double zscore(const std::vector<double>& data, size_t period) {
 inline double hurst(const std::vector<double>& data) {
     if (data.size() < 20) return 0.5;
     std::vector<double> r;
-    for (size_t i = 1; i < data.size(); ++i) r.push_back(std::log(data[i]/data[i-1]));
+    for (size_t i = 1; i < data.size(); ++i) {
+        if (data[i] > 0 && data[i-1] > 0) {
+            r.push_back(std::log(data[i]/data[i-1]));
+        }
+    }
+    if (r.size() < 10) return 0.5;
+
     double avg = std::accumulate(r.begin(), r.end(), 0.0) / r.size();
     double cum = 0; std::vector<double> dev;
     for (double v : r) { cum += (v - avg); dev.push_back(cum); }
@@ -341,7 +396,8 @@ inline double hurst(const std::vector<double>& data) {
     double var = 0;
     for (double v : r) var += (v - avg) * (v - avg);
     double s = std::sqrt(var / r.size());
-    return (s == 0) ? 0.5 : std::log(range / s) / std::log(r.size());
+    if (s == 0 || range == 0) return 0.5;
+    return std::log(range / s) / std::log(static_cast<double>(r.size()));
 }
 
 // ─── CYCLE / REGIME ──────────────────────────────────────────────────────────
